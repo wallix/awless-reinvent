@@ -1,0 +1,51 @@
+# Filename: "wordpress_infra.aws"
+
+# 1. Basic networking
+
+# create 2 public subnets in different AZs attached to internet gateway
+vpc = {wordpress.vpc}
+pubSub1 = create subnet cidr=10.0.100.0/24 vpc=$vpc name=wordpress-public-subnet-1 availabilityzone={az1}
+update subnet id=$pubSub1 public=true
+pubSub2 = create subnet cidr=10.0.101.0/24 vpc=$vpc name=wordpress-public-subnet-2 availabilityzone={az2}
+update subnet id=$pubSub2 public=true
+rt = create routetable vpc=$vpc
+create route table=$rt cidr=0.0.0.0/0 gateway={vpc.internetgateway}
+attach routetable id=$rt subnet=$pubSub1
+attach routetable id=$rt subnet=$pubSub2
+
+# 2 private subnets in different AZs
+privSub1 = create subnet cidr=10.0.10.0/24 vpc=$vpc name=wordpress-private-subnet-1 availabilityzone={az1}
+privSub2 = create subnet cidr=10.0.11.0/24 vpc=$vpc name=wordpress-private-subnet-2 availabilityzone={az2}
+ 
+# NAT Gateway in public subnet with a fixed IP
+ip = create elasticip
+natgw = create natgateway elasticip-id=$ip subnet=$pubSub1
+check natgateway id=$natgw state=available timeout=180
+ 
+# Routing between private subnets and NAT gateway
+natgw_rtable = create routetable vpc=$vpc
+attach routetable id=$natgw_rtable subnet=$privSub1
+attach routetable id=$natgw_rtable subnet=$privSub2
+create route cidr=0.0.0.0/0 gateway=$natgw table=$natgw_rtable
+
+# 2. Provision loadbalancer
+
+# Create the load balancer security group
+lbsecgroup = create securitygroup vpc=$vpc description="authorize HTTP from the internet" name=wordpress-lb-securitygroup
+update securitygroup id=$lbsecgroup inbound=authorize protocol=tcp cidr=0.0.0.0/0 portrange=80
+# Provision the load balancer listening in the public subnets, with its target group and HTTP listener
+tg = create targetgroup name=wordpress-workers port=80 protocol=HTTP vpc=$vpc
+update targetgroup id=$tg stickiness=true
+lb = create loadbalancer name=wordpress-loadbalancer subnets=[$pubSub1,$pubSub2] securitygroups=$lbsecgroup
+create listener actiontype=forward loadbalancer=$lb port=80 protocol=HTTP targetgroup=$tg
+
+# 3. Provision database
+
+# Database security group (authorize access from private subnets to port 3306)
+dbsec = create securitygroup name=wordpress-database-securitygroup vpc=$vpc description="authorize mysql port 3306 from private subnets"
+update securitygroup id=$dbsec inbound=authorize cidr=10.0.10.0/24 portrange=3306
+update securitygroup id=$dbsec inbound=authorize cidr=10.0.11.0/24 portrange=3306
+# Distribute the MariaDB database in the 2 subnets
+dbsub = create dbsubnetgroup name=wordpress-dbsubnets description="subnets for wordpress databases" subnets=[$privSub1,$privSub2]
+create database engine=mariadb id=wordpress-database password={dbpassword} size=8 type=db.t2.micro username=wordpress dbname=wordpress multiaz=true subnetgroup=$dbsub vpcsecuritygroups=$dbsec
+
