@@ -1,0 +1,12 @@
+# wordpress.aws :
+dbname=wordpress
+dbhost={dbhost}
+dbuser=wordpress
+dbpassword={dbpassword}
+# Create the security group and launch configuration for the instances
+instSecGroup = create securitygroup vpc={wordpress.vpc} description="HTTP + SSH within VPC" name=wordpress-private-secgroup
+update securitygroup id=$instSecGroup inbound=authorize cidr=10.0.0.0/16 portrange=22
+update securitygroup id=$instSecGroup inbound=authorize cidr=10.0.0.0/16 portrange=80
+launchconf = create launchconfiguration image={instance.image} keypair={keypair} name=wordpress-launch-configuration type=t2.micro userdata=https://raw.githubusercontent.com/wallix/awless-templates/fa1bf2a3364f49e0304d8d4a2ed48662792c2790/userdata/wordpress-with-S3-plugin.sh securitygroups=$instSecGroup
+create scalinggroup desired-capacity=2 launchconfiguration=$launchconf max-size=2 min-size=2 name=wordpress-scalinggroup subnets={private.subnets} targetgroups=@wordpress-workers
+
