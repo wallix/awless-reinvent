@@ -4,9 +4,9 @@
 
 # create 2 public subnets in different AZs attached to internet gateway
 vpc = {wordpress.vpc}
-pubSub1 = create subnet cidr=10.0.100.0/24 vpc=$vpc name=wordpress-public-subnet-1 availabilityzone={az1}
+pubSub1 = create subnet cidr=10.0.100.0/24 vpc=$vpc name=wordpress-public-subnet-1 availabilityzone={availabilityzone.1}
 update subnet id=$pubSub1 public=true
-pubSub2 = create subnet cidr=10.0.101.0/24 vpc=$vpc name=wordpress-public-subnet-2 availabilityzone={az2}
+pubSub2 = create subnet cidr=10.0.101.0/24 vpc=$vpc name=wordpress-public-subnet-2 availabilityzone={availabilityzone.2}
 update subnet id=$pubSub2 public=true
 rt = create routetable vpc=$vpc
 create route table=$rt cidr=0.0.0.0/0 gateway={vpc.internetgateway}
@@ -14,14 +14,14 @@ attach routetable id=$rt subnet=$pubSub1
 attach routetable id=$rt subnet=$pubSub2
 
 # 2 private subnets in different AZs
-privSub1 = create subnet cidr=10.0.10.0/24 vpc=$vpc name=wordpress-private-subnet-1 availabilityzone={az1}
-privSub2 = create subnet cidr=10.0.11.0/24 vpc=$vpc name=wordpress-private-subnet-2 availabilityzone={az2}
- 
+privSub1 = create subnet cidr=10.0.10.0/24 vpc=$vpc name=wordpress-private-subnet-1 availabilityzone={availabilityzone.1}
+privSub2 = create subnet cidr=10.0.11.0/24 vpc=$vpc name=wordpress-private-subnet-2 availabilityzone={availabilityzone.2}
+
 # NAT Gateway in public subnet with a fixed IP
 ip = create elasticip
 natgw = create natgateway elasticip-id=$ip subnet=$pubSub1
 check natgateway id=$natgw state=available timeout=180
- 
+
 # Routing between private subnets and NAT gateway
 natgw_rtable = create routetable vpc=$vpc
 attach routetable id=$natgw_rtable subnet=$privSub1
