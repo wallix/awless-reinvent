@@ -8,5 +8,5 @@ dbpassword={dbpassword}
 instSecGroup = create securitygroup vpc={wordpress.vpc} description="HTTP + SSH within VPC" name=wordpress-private-secgroup
 update securitygroup id=$instSecGroup inbound=authorize cidr=10.0.0.0/16 portrange=22
 update securitygroup id=$instSecGroup inbound=authorize cidr=10.0.0.0/16 portrange=80
-launchconf = create launchconfiguration distro=amazonlinux keypair={keypair} name=wordpress-launch-configuration type=t2.micro userdata=./userdata/wordpress-provisioning.sh securitygroups=$instSecGroup
+launchconf = create launchconfiguration distro=amazonlinux keypair={keypair} name=wordpress-launch-configuration type=t2.micro userdata=https://raw.githubusercontent.com/wallix/awless-reinvent/7b792539984929fd771711282b055522bb5e044a/userdata/wordpress-provisioning.sh securitygroups=$instSecGroup
 create scalinggroup desired-capacity=2 launchconfiguration=$launchconf max-size=2 min-size=2 name=wordpress-scalinggroup subnets={private.subnets} targetgroups=@wordpress-workers
