@@ -4,10 +4,8 @@
 
 # create 2 public subnets in different AZs attached to internet gateway
 vpc = {wordpress.vpc}
-pubSub1 = create subnet cidr=10.0.100.0/24 vpc=$vpc name=wordpress-public-subnet-1 availabilityzone={availabilityzone.1}
-update subnet id=$pubSub1 public=true
-pubSub2 = create subnet cidr=10.0.101.0/24 vpc=$vpc name=wordpress-public-subnet-2 availabilityzone={availabilityzone.2}
-update subnet id=$pubSub2 public=true
+pubSub1 = create subnet cidr=10.0.100.0/24 vpc=$vpc name=wordpress-public-subnet-1 availabilityzone={availabilityzone.1} public=true
+pubSub2 = create subnet cidr=10.0.101.0/24 vpc=$vpc name=wordpress-public-subnet-2 availabilityzone={availabilityzone.2} public=true
 rt = create routetable vpc=$vpc
 create route table=$rt cidr=0.0.0.0/0 gateway={vpc.internetgateway}
 attach routetable id=$rt subnet=$pubSub1
